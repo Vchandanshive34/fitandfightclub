@@ -1,0 +1,290 @@
+<!--
+  Fit & Fight Club Lead Capture Form
+  Add this to your fitness club website to capture visitor contact info
+  Works in conjunction with visitor-tracker.js
+-->
+
+<style>
+  /* Lead Capture Form Styles */
+  #ffc-lead-capture {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 24px;
+    max-width: 320px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    z-index: 9999;
+    animation: slideInUp 0.3s ease-out;
+  }
+
+  @keyframes slideInUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  #ffc-lead-capture.hidden {
+    display: none !important;
+  }
+
+  .ffc-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ffc-close-btn:hover {
+    color: #333;
+  }
+
+  .ffc-form-header {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #0a0909;
+  }
+
+  .ffc-form-subtext {
+    margin: 0 0 16px 0;
+    font-size: 13px;
+    color: #666;
+  }
+
+  .ffc-form-group {
+    margin-bottom: 12px;
+  }
+
+  .ffc-form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+  }
+
+  .ffc-form-input:focus {
+    outline: none;
+    border-color: #FF6B35;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+  }
+
+  .ffc-form-input::placeholder {
+    color: #999;
+  }
+
+  .ffc-submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: #FF6B35;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-family: inherit;
+  }
+
+  .ffc-submit-btn:hover {
+    background: #E55A24;
+  }
+
+  .ffc-submit-btn:active {
+    transform: scale(0.98);
+  }
+
+  .ffc-submit-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .ffc-success-message {
+    display: none;
+    text-align: center;
+    color: #2ecc71;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .ffc-error-message {
+    display: none;
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  /* Responsive design */
+  @media (max-width: 480px) {
+    #ffc-lead-capture {
+      max-width: calc(100% - 20px);
+      right: 10px;
+      bottom: 10px;
+    }
+  }
+</style>
+
+<!-- Lead Capture Form HTML -->
+<div id="ffc-lead-capture">
+  <button class="ffc-close-btn" id="ffc-close-btn">×</button>
+
+  <h3 class="ffc-form-header">Get Your Free Trial</h3>
+  <p class="ffc-form-subtext">Join hundreds training at Fit & Fight Club</p>
+
+  <form id="ffc-visitor-form">
+    <div class="ffc-form-group">
+      <input
+        type="email"
+        id="ffc-visitor-email"
+        class="ffc-form-input"
+        placeholder="Your email address"
+        required
+      >
+    </div>
+
+    <div class="ffc-form-group">
+      <input
+        type="tel"
+        id="ffc-visitor-phone"
+        class="ffc-form-input"
+        placeholder="Your phone number"
+        required
+      >
+    </div>
+
+    <button type="submit" class="ffc-submit-btn" id="ffc-submit-btn">
+      Claim Free Trial
+    </button>
+
+    <div class="ffc-error-message" id="ffc-error-message"></div>
+    <div class="ffc-success-message" id="ffc-success-message">
+      ✓ Thanks! We'll contact you soon.
+    </div>
+  </form>
+</div>
+
+<script>
+  /**
+   * Lead Capture Form Handler
+   * Works with visitor-tracker.js
+   */
+
+  const formEl = document.getElementById('ffc-visitor-form');
+  const closeBtn = document.getElementById('ffc-close-btn');
+  const submitBtn = document.getElementById('ffc-submit-btn');
+  const errorMsg = document.getElementById('ffc-error-message');
+  const successMsg = document.getElementById('ffc-success-message');
+  const emailInput = document.getElementById('ffc-visitor-email');
+  const phoneInput = document.getElementById('ffc-visitor-phone');
+  const formContainer = document.getElementById('ffc-lead-capture');
+
+  // Close form
+  closeBtn.addEventListener('click', () => {
+    formContainer.classList.add('hidden');
+  });
+
+  // Form submission
+  formEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = emailInput.value.trim();
+    const phone = phoneInput.value.trim();
+
+    // Validate
+    if (!email || !phone) {
+      showError('Please fill in all fields');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      showError('Please enter a valid email');
+      return;
+    }
+
+    // Submit
+    try {
+      submitBtn.classList.add('loading');
+      submitBtn.disabled = true;
+
+      // Use global FFC_CRM object from visitor-tracker.js
+      if (window.FFC_CRM && window.FFC_CRM.captureVisitor) {
+        window.FFC_CRM.captureVisitor(email, phone);
+      }
+
+      // Show success
+      submitBtn.style.display = 'none';
+      successMsg.style.display = 'block';
+
+      // Close form after 2 seconds
+      setTimeout(() => {
+        formContainer.classList.add('hidden');
+        resetForm();
+      }, 2000);
+
+    } catch (error) {
+      showError('Something went wrong. Please try again.');
+      console.error('Form submission error:', error);
+    } finally {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+    }
+  });
+
+  function showError(message) {
+    errorMsg.textContent = message;
+    errorMsg.style.display = 'block';
+    setTimeout(() => {
+      errorMsg.style.display = 'none';
+    }, 4000);
+  }
+
+  function resetForm() {
+    formEl.reset();
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+    submitBtn.style.display = 'block';
+  }
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  // Show form after 10 seconds
+  setTimeout(() => {
+    formContainer.classList.remove('hidden');
+  }, 10000);
+
+  // Alternative: Show on scroll (uncomment to use)
+  /*
+  let formShown = false;
+  window.addEventListener('scroll', () => {
+    if (!formShown && window.scrollY > 500) {
+      formContainer.classList.remove('hidden');
+      formShown = true;
+    }
+  });
+  */
+</script>
